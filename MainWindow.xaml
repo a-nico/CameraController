@@ -5,8 +5,71 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CameraController"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
-    <Grid>
-        
+        Title="Dr. Drei's Camera Controller" Height="800" Width="800">
+    <Grid Name="MainGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/> 
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Name="SettingsGrid" Grid.Column="0" Orientation="Vertical">
+            <!--Exposure Setting-->
+            <TextBlock Text="Exposure (μs)" Width="Auto" HorizontalAlignment="Center" Margin="0,15,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
+                <Button Content="--" Width="30"/>
+                <Button Content="-" Width="30"/>
+                <TextBox Text="{Binding ExposureBox}" Width="40pt"/>
+                <Button Content="+" Width="30"/>
+                <Button Content="++" Width="30"/>
+            </StackPanel>
+            
+            <!--Duration Setting-->
+            <TextBlock Text="Duration (s)" Width="Auto" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
+                <Button Content="--" Width="30"/>
+                <Button Content="-" Width="30"/>
+                <TextBox Text="{Binding DurationBox}" Width="40pt"/>
+                <Button Content="+" Width="30"/>
+                <Button Content="++" Width="30"/>
+            </StackPanel>
+
+            <!-- # of Frames Setting-->
+            <TextBlock Text="# of Frames" Width="Auto" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
+                <Button Content="--" Width="30"/>
+                <Button Content="-" Width="30"/>
+                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
+                <Button Content="+" Width="30"/>
+                <Button Content="++" Width="30"/>
+            </StackPanel>
+
+            <!-- Frame Rate Setting-->
+            <TextBlock Text="Frame Rate" Width="Auto" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
+                <Button Content="--" Width="30"/>
+                <Button Content="-" Width="30"/>
+                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
+                <Button Content="+" Width="30"/>
+                <Button Content="++" Width="30"/>
+            </StackPanel>
+
+            
+            <!-- Frame Rate Setting-->
+            <TextBlock Text="Timer (s)" Width="Auto" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20" HorizontalAlignment="Center">
+                <Button Content="-" Width="30"/>
+                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
+                <Button Content="+" Width="30"/>
+
+            </StackPanel>
+
+            <Button Content="Go" Width="100" Height="50" Margin="0,20,0,20"/>
+            <Button Content="Stop" Width="100" Height="50" Margin="0,20,0,20"/>
+            <Button Content="Browse" Width="100" Height="25" Margin="0,20,0,20"/>
+
+        </StackPanel>
+
+
+
     </Grid>
 </Window>
