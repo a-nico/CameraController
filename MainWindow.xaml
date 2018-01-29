@@ -16,57 +16,57 @@
             <!--Exposure Setting-->
             <TextBlock Text="Exposure (μs)" Width="Auto" HorizontalAlignment="Center" Margin="0,15,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
-                <Button Content="--" Width="30"/>
-                <Button Content="-" Width="30"/>
+                <Button Content="--" Width="30" Click="ExposureMinus2_Click"/>
+                <Button Content="-" Width="30" Click="ExposureMinus_Click"/>
                 <TextBox Text="{Binding ExposureBox}" Width="40pt"/>
-                <Button Content="+" Width="30"/>
-                <Button Content="++" Width="30"/>
+                <Button Content="+" Width="30" Click="ExposurePlus_Click"/>
+                <Button Content="++" Width="30" Click="ExposurePlus2_Click"/>
             </StackPanel>
             
             <!--Duration Setting-->
             <TextBlock Text="Duration (s)" Width="Auto" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
-                <Button Content="--" Width="30"/>
-                <Button Content="-" Width="30"/>
+                <Button Content="--" Width="30" Click="DurationMinus2_Click"/>
+                <Button Content="-" Width="30" Click="DurationMinus2_Click"/>
                 <TextBox Text="{Binding DurationBox}" Width="40pt"/>
-                <Button Content="+" Width="30"/>
-                <Button Content="++" Width="30"/>
+                <Button Content="+" Width="30" Click="DurationPlus_Click"/>
+                <Button Content="++" Width="30" Click="DurationPlus2_Click"/>
             </StackPanel>
 
             <!-- # of Frames Setting-->
             <TextBlock Text="# of Frames" Width="Auto" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
-                <Button Content="--" Width="30"/>
-                <Button Content="-" Width="30"/>
-                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
-                <Button Content="+" Width="30"/>
-                <Button Content="++" Width="30"/>
+                <Button Content="--" Width="30" Click="FramesMinus2_Click"/>
+                <Button Content="-" Width="30" Click="FramesMinus_Click"/>
+                <TextBox Text="{Binding FramesBox}" Width="40pt"/>
+                <Button Content="+" Width="30" Click="FramesPlus_Click"/>
+                <Button Content="++" Width="30" Click="FramesPlus2_Click"/>
             </StackPanel>
 
             <!-- Frame Rate Setting-->
             <TextBlock Text="Frame Rate" Width="Auto" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20">
-                <Button Content="--" Width="30"/>
-                <Button Content="-" Width="30"/>
-                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
-                <Button Content="+" Width="30"/>
-                <Button Content="++" Width="30"/>
+                <Button Content="--" Width="30" Click="RateMinus2_Click"/>
+                <Button Content="-" Width="30" Click="RateMinus_Click"/>
+                <TextBox Text="{Binding RateBox}" Width="40pt"/>
+                <Button Content="+" Width="30" Click="RatePlus_Click"/>
+                <Button Content="++" Width="30" Click="RatePlus2_Click"/>
             </StackPanel>
 
             
-            <!-- Frame Rate Setting-->
+            <!-- Timer Setting-->
             <TextBlock Text="Timer (s)" Width="Auto" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" Margin="5, 10, 5, 20" HorizontalAlignment="Center">
-                <Button Content="-" Width="30"/>
-                <TextBox Text="{Binding NumOfFrames}" Width="40pt"/>
-                <Button Content="+" Width="30"/>
-
+                <Button Content="-" Width="30" Click="TimerMinus_Click"/>
+                <TextBox Text="{Binding TimerBox}" Width="40pt"/>
+                <Button Content="+" Width="30" Click="TimerPlus_Click"/>
             </StackPanel>
 
-            <Button Content="Go" Width="100" Height="50" Margin="0,20,0,20"/>
-            <Button Content="Stop" Width="100" Height="50" Margin="0,20,0,20"/>
-            <Button Content="Browse" Width="100" Height="25" Margin="0,20,0,20"/>
+            <Button Content="Capture" Width="100" Height="50" Margin="0,20,0,20" Click="Capture_Click"/>
+            <Button Content="Stop" Width="100" Height="50" Margin="0,20,0,20" Click="Stop_Click"/>
+            <Button Content="Browse" Width="100" Height="25" Margin="0,20,0,20" Click="Browse_Click"/>
 
+            <Button Content="Start Cam" Width="100" Height="25" HorizontalAlignment="Center" Click="StartCam_Click"/>
         </StackPanel>
 
 
