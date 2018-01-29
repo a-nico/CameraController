@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace CameraController
 {
@@ -131,5 +134,60 @@ namespace CameraController
 
         }
         # endregion
+    }
+
+    internal class CameraControl : INotifyPropertyChanged
+    {
+        Dispatcher UIDispatcher;
+
+        private ImageSource _MainImage;
+        public ImageSource MainImage
+        {
+            get { return _MainImage; }
+            set
+            {
+                _MainImage = value;
+                NotifyPropertyChanged("UIimage");
+            }
+        }
+
+        // gets called when "Capture" UI button is clicked
+        private ObservableCollection<ImageSource> _imageSourceThumbnails;
+        public ObservableCollection<ImageSource> ImageSourceThumbnails
+        {   //"observable collection" automatically notifies UI when changed
+            get
+            {
+                return _imageSourceThumbnails;
+            }
+
+            set
+            {
+                _imageSourceThumbnails = value;
+                NotifyPropertyChanged("ImageSourceFrames");
+            }
+        }
+
+
+        public CameraControl(Dispatcher UIDispatcher)
+        {
+            this.UIDispatcher = UIDispatcher;
+
+            // create collecton on UI thread so I won't have any problems with scope BS
+            UIDispatcher?.BeginInvoke(new Action(() =>
+            {
+                ImageSourceThumbnails = new ObservableCollection<ImageSource>();
+            }));
+
+        }
+
+        #region PropertyChanged stuff
+        // call this method invokes event to update UI elements which use Binding
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void NotifyPropertyChanged(string name)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+        #endregion
+
     }
 }
