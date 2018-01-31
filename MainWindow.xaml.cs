@@ -261,8 +261,8 @@ namespace CameraController
             Mjpg,
             H264
         }
-        int frameWidth;
-        int frameHeight;
+        int frameWidth = 1280;
+        int frameHeight = 1024;
         const int DEFAULT_FRAME_RATE = 30;
 
         #endregion
@@ -407,13 +407,6 @@ namespace CameraController
                 {
                     using (IManagedImage rawImage = cam.GetNextImage())
                     {
-                        // set width/height only first time
-                        if (frameWidth == 0 || frameHeight == 0)
-                        {
-                            frameHeight = (int)rawImage.Height;
-                            frameWidth = (int)rawImage.Width;
-                        }
-
                         // flash it on screen
                         // updating UI image has to be done on UI thread. Use Dispatcher
                         UIDispatcher.Invoke(new Action(() =>
