@@ -41,7 +41,8 @@ namespace CameraController
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-
+            //C: \Users\Bubble\Videos\Captures
+            camControl.startRecording();
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -82,7 +83,7 @@ namespace CameraController
 
         private void Stop_Click(object sender, RoutedEventArgs e)
         {
-
+            camControl.isRecording = false;
         }
 
         private void Capture_Click(object sender, RoutedEventArgs e)
@@ -100,85 +101,142 @@ namespace CameraController
 
         private void ExposureMinus_Click(object sender, RoutedEventArgs e)
         {
-            camControl.ExposureBox = (int)(camControl.ExposureBox / smallModifier);
-
+            if (camStarted)
+            {
+                camControl.ExposureBox = (int)(camControl.ExposureBox / smallModifier);
+            }
         }
 
         private void ExposurePlus_Click(object sender, RoutedEventArgs e)
         {
-            camControl.ExposureBox = (int)(camControl.ExposureBox * smallModifier);
-
+            if (camStarted)
+            {
+                camControl.ExposureBox = (int)(camControl.ExposureBox * smallModifier);
+            }
         }
 
         private void ExposurePlus2_Click(object sender, RoutedEventArgs e)
         {
-            camControl.ExposureBox = (int)(camControl.ExposureBox * bigModifier);
+            if (camStarted)
+            {
+                camControl.ExposureBox = (int)(camControl.ExposureBox * bigModifier);
+            }
+        }
 
+        private void DurationMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (camStarted)
+            {
+                camControl.DurationBox -= 1;
+            }
         }
 
         private void DurationMinus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.DurationBox -= 5;
+            }
         }
 
         private void DurationPlus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.DurationBox += 1;
+            }
         }
 
         private void DurationPlus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.DurationBox += 5;
+            }
         }
 
         private void FramesMinus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.FramesBox -= 25;
+            }
         }
 
         private void FramesMinus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.FramesBox -= 5;
+            }
         }
 
         private void FramesPlus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.FramesBox += 5;
+            }
         }
 
         private void FramesPlus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.FramesBox += 25;
+            }
         }
 
         private void RateMinus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.RateBox = (int)(camControl.RateBox / bigModifier);
+            }
         }
 
         private void RateMinus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.RateBox = (int)(camControl.RateBox / smallModifier);
+            }
         }
 
         private void RatePlus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.RateBox = (int)(camControl.RateBox * smallModifier);
+            }
         }
 
         private void RatePlus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.RateBox = (int)(camControl.RateBox * bigModifier);
+            }
         }
 
         private void TimerMinus_Click(object sender, RoutedEventArgs e)
         {
+            if (camStarted)
+            {
+                if (camControl.TimerBox > 0)
+                {
+                    camControl.TimerBox -= 1;
+                }
+            }
 
         }
 
         private void TimerPlus_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.TimerBox += 1;
+            }
         }
         #endregion
 
@@ -205,6 +263,7 @@ namespace CameraController
         }
         int frameWidth = 1280;
         int frameHeight = 1024;
+        const int DEFAULT_FRAME_RATE = 30;
 
         #endregion
 
@@ -216,13 +275,16 @@ namespace CameraController
             get
             {
                 if (cam != null)
-                    return (int)cam.AcquisitionFrameRate.Value;
+                    return (int)Math.Round(cam.AcquisitionFrameRate.Value);
                 return 0;
             }
             set
             {
                 SetFramerate(value); // when loses focus, sets camera to what user inputed
-                NotifyPropertyChanged("FrameRate"); // update UI box (calls get)
+                NotifyPropertyChanged("RateBox"); // update UI box (calls get)
+                // now update the number of rames
+                _FramesBox = _FramesBox = (int)Math.Round(RateBox * DurationBox);
+                NotifyPropertyChanged("FramesBox");
             }
         }
 
@@ -253,7 +315,7 @@ namespace CameraController
             }
         }
 
-        private int _FramesBox;
+        private int _FramesBox = 5;
         public int FramesBox
         {
             get
@@ -263,12 +325,14 @@ namespace CameraController
             set
             {
                 _FramesBox = value;
-                NotifyPropertyChanged("FrameCount");
+                _DurationBox = (value / RateBox);
+                NotifyPropertyChanged("FramesBox");
+                NotifyPropertyChanged("DurationBox");
             }
         }
 
-        private int _DurationBox;
-        public int DurationBox
+        private float _DurationBox = 5;
+        public float DurationBox
         {
             get
             {
@@ -277,8 +341,37 @@ namespace CameraController
             set
             {
                 _DurationBox = value;
-                FramesBox = (int) (RateBox * value);
+                _FramesBox = (int)Math.Round(RateBox * value);
                 NotifyPropertyChanged("DurationBox");
+                NotifyPropertyChanged("FramesBox");
+            }
+        }
+
+        private int _TimerBox;
+        public int TimerBox
+        {
+            get
+            {
+                return _TimerBox;
+            }
+            set
+            {
+                _TimerBox = value;
+                NotifyPropertyChanged("TimerBox");
+            }
+        }
+
+        private int _AviRateBox;
+        public int AviRateBox
+        {
+            get
+            {
+                return _AviRateBox;
+            }
+            set
+            {
+                _AviRateBox = value;
+                NotifyPropertyChanged("AviRateBox");
             }
         }
 
@@ -289,7 +382,7 @@ namespace CameraController
         {
             this.UIDispatcher = UIDispatcher;
 
-
+            imageQueue = new Queue<IManagedImage>();
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
@@ -333,9 +426,12 @@ namespace CameraController
             })); // end Task
         }
 
-        public void startRecording(string aviFilename, float frameRate=30, AviType fileType=AviType.Uncompressed)
+        const string defaultPath = "C:\\Users\\Bubble\\Videos\\Captures\\";
+        public void startRecording(string aviFileDirectory=defaultPath, float frameRate=30, AviType fileType=AviType.H264)
         {
             isRecording = true;
+            string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
+            string aviFilename = aviFileDirectory + name;
 
             // start eating up the queue and appending to AVI
             Task.Run(new Action(() =>
@@ -361,8 +457,8 @@ namespace CameraController
                             H264Option h264Option = new H264Option();
                             h264Option.frameRate = frameRate;
                             h264Option.bitrate = 1000000;
-                            h264Option.height = Convert.ToInt32(frameHeight);
-                            h264Option.width = Convert.ToInt32(frameWidth);
+                            h264Option.height = frameHeight;
+                            h264Option.width = frameWidth;
                             aviRecorder.AVIOpen(aviFilename, h264Option);
                             break;
                     }
@@ -370,7 +466,12 @@ namespace CameraController
                     while (isRecording || imageQueue.Count > 0)
                     {
                         if (imageQueue.Count > 0)
-                            aviRecorder.AVIAppend(imageQueue.Dequeue());
+                        {
+                            using (var rawImage = imageQueue.Dequeue())
+                                aviRecorder.AVIAppend(rawImage);
+                        }
+
+                            
                     }
                 aviRecorder.AVIClose();
                 }
@@ -514,6 +615,7 @@ namespace CameraController
             }
         }
 
+
         public bool InitializeCamera()
         { // call only once
             spinnakerSystem = new ManagedSystem();
@@ -528,6 +630,9 @@ namespace CameraController
                 else cam = camList[0]; // get the first one
             } // camlist is garbage collected
             cam.Init(); // don't know what this does
+
+            SetFramerate(DEFAULT_FRAME_RATE);
+            NotifyPropertyChanged("ExposureBox");
             return true;
         }
 
