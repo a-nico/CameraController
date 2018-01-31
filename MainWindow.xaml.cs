@@ -26,16 +26,52 @@ namespace CameraController
     public partial class MainWindow : Window
     {
 
-
+        CameraControl camControl;
+        bool camStarted;
+        float bigModifier = 1.6f;
+        float smallModifier = 1.2f;
 
         public MainWindow()
         {
             InitializeComponent();
+ 
         }
 
-        # region Button Even Handlers
+        #region Button Even Handlers
+
+        private void Record_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
         private void StartCam_Click(object sender, RoutedEventArgs e)
         {
+            if (camControl == null)
+            {
+                camControl = new CameraControl(this.Dispatcher);
+                
+                if (camControl.InitializeCamera())
+                {
+                    MainGrid.DataContext = camControl; // every child in MainGrid gets context in this object
+                    StartCam_Click(sender, e);
+                    camStarted = true;
+                }
+            } 
+            else
+            {
+                if (camControl.liveMode)
+                {
+                    camControl.liveMode = false;
+                    StartStopButton.Content = "Go Live";
+                }
+                else
+                {
+                    camControl.GoLive();
+                    StartStopButton.Content = "Stop Cam";
+
+                }
+                
+            }
 
         }
 
@@ -56,21 +92,27 @@ namespace CameraController
 
         private void ExposureMinus2_Click(object sender, RoutedEventArgs e)
         {
-
+            if (camStarted)
+            {
+                camControl.ExposureBox = (int)(camControl.ExposureBox / bigModifier);
+            }
         }
 
         private void ExposureMinus_Click(object sender, RoutedEventArgs e)
         {
+            camControl.ExposureBox = (int)(camControl.ExposureBox / smallModifier);
 
         }
 
         private void ExposurePlus_Click(object sender, RoutedEventArgs e)
         {
+            camControl.ExposureBox = (int)(camControl.ExposureBox * smallModifier);
 
         }
 
         private void ExposurePlus2_Click(object sender, RoutedEventArgs e)
         {
+            camControl.ExposureBox = (int)(camControl.ExposureBox * bigModifier);
 
         }
 
@@ -138,32 +180,42 @@ namespace CameraController
         {
 
         }
-        # endregion
+        #endregion
+
+
     }
 
 
     // --------------------------------------------------------------------------------
 
-    internal class CameraControl : INotifyPropertyChanged
+    internal class CameraControl : INotifyPropertyChanged, IDisposable
     {
         # region Fields
         Dispatcher UIDispatcher;
         private ManagedSystem spinnakerSystem; // spinnaker class
         private IManagedCamera cam; // the blackfly
         public bool liveMode; // live mode or frame capture on UI
-
+        public bool isRecording; // if direct to AVI is running
+        private Queue<IManagedImage> imageQueue; // waiting to get appended to AVI
+        public enum AviType
+        {
+            Uncompressed,
+            Mjpg,
+            H264
+        }
+        int frameWidth = 1280;
+        int frameHeight = 1024;
 
         #endregion
 
 
         #region Properties
 
-        public int FrameRate
+        public int RateBox
         {
             get
             {
                 if (cam != null)
-                    //return (uint)(1000 * currentCam.AcquisitionFrameRate.Value) / 1000.0;
                     return (int)cam.AcquisitionFrameRate.Value;
                 return 0;
             }
@@ -174,14 +226,14 @@ namespace CameraController
             }
         }
 
-        private ImageSource mainImage;
+        private ImageSource _MainImage;
         public ImageSource MainImage
         {
-            get { return mainImage; }
+            get { return _MainImage; }
             set
             {
-                mainImage = value;
-                NotifyPropertyChanged("UIimage");
+                _MainImage = value;
+                NotifyPropertyChanged("MainImage");
             }
         }
 
@@ -201,19 +253,35 @@ namespace CameraController
             }
         }
 
-        private uint frameCount;
-        public uint FrameCount
+        private int _FramesBox;
+        public int FramesBox
         {
             get
             {
-                return frameCount < 2 ? 2 : frameCount; // can't be <2 for MultiFrame mode
+                return _FramesBox < 2 ? 2 : _FramesBox; // can't be <2 for MultiFrame mode
             }
             set
             {
-                frameCount = value;
+                _FramesBox = value;
                 NotifyPropertyChanged("FrameCount");
             }
         }
+
+        private int _DurationBox;
+        public int DurationBox
+        {
+            get
+            {
+                return _DurationBox;
+            }
+            set
+            {
+                _DurationBox = value;
+                FramesBox = (int) (RateBox * value);
+                NotifyPropertyChanged("DurationBox");
+            }
+        }
+
         #endregion
 
         // constructor
@@ -234,39 +302,86 @@ namespace CameraController
 
         public void GoLive()
         {
-            SetAcqusitionMode(AcquisitionMode.Continuous);
-            cam.BeginAcquisition();
             liveMode = true;
 
             Task.Run(new Action(() =>
             {
-                SetAcqusitionMode(AcquisitionMode.Multi, FrameCount);
+                SetAcqusitionMode(AcquisitionMode.Continuous);
                 cam.BeginAcquisition();
-                IManagedAVIRecorder aviRec = new ManagedAVIRecorder();
+                
 
                 while (liveMode)
                 {
-                    using (IManagedImage rawFrame = cam.GetNextImage())
+                    using (IManagedImage rawImage = cam.GetNextImage())
                     {
                         // flash it on screen
                         // updating UI image has to be done on UI thread. Use Dispatcher
                         UIDispatcher.Invoke(new Action(() =>
                         {
-                            MainImage = ConvertRawToBitmapSource(rawFrame);
+                            MainImage = ConvertRawToBitmapSource(rawImage);
                         }));
-                        // append to AVI
-                        // if (isRecording)
-                        aviRec.AVIAppend(rawFrame);
+
+                        if (isRecording)
+                        {
+                            // Deep copy image into queue for making AVI
+                            imageQueue.Enqueue(rawImage.Convert(PixelFormatEnums.Mono8));
+                        }
+
                     }
                 }
                 cam.EndAcquisition(); // done with camera
             })); // end Task
         }
 
+        public void startRecording(string aviFilename, float frameRate=30, AviType fileType=AviType.Uncompressed)
+        {
+            isRecording = true;
+
+            // start eating up the queue and appending to AVI
+            Task.Run(new Action(() =>
+            {
+                using (IManagedAVIRecorder aviRecorder = new ManagedAVIRecorder())
+                {
+                    switch (fileType)
+                    {
+                        case AviType.Uncompressed:
+                            AviOption uncompressedOption = new AviOption();
+                            uncompressedOption.frameRate = frameRate;
+                            aviRecorder.AVIOpen(aviFilename, uncompressedOption);
+                            break;
+
+                        case AviType.Mjpg:
+                            MJPGOption mjpgOption = new MJPGOption();
+                            mjpgOption.frameRate = frameRate;
+                            mjpgOption.quality = 75;
+                            aviRecorder.AVIOpen(aviFilename, mjpgOption);
+                            break;
+
+                        case AviType.H264:
+                            H264Option h264Option = new H264Option();
+                            h264Option.frameRate = frameRate;
+                            h264Option.bitrate = 1000000;
+                            h264Option.height = Convert.ToInt32(frameHeight);
+                            h264Option.width = Convert.ToInt32(frameWidth);
+                            aviRecorder.AVIOpen(aviFilename, h264Option);
+                            break;
+                    }
+
+                    while (isRecording || imageQueue.Count > 0)
+                    {
+                        if (imageQueue.Count > 0)
+                            aviRecorder.AVIAppend(imageQueue.Dequeue());
+                    }
+                aviRecorder.AVIClose();
+                }
+
+            }));
+        }
+
 
         #region Acquisition Mode
         public enum AcquisitionMode { Single, Multi, Continuous }; // made this for kicks
-        public void SetAcqusitionMode(AcquisitionMode mode, uint numFrames=1)
+        public void SetAcqusitionMode(AcquisitionMode mode, int numFrames=1)
         {
             // get the handle on the properties (called "nodes")
             INodeMap nodeMap = this.cam.GetNodeMap();
@@ -304,21 +419,21 @@ namespace CameraController
         #endregion
 
         #region Exposure Time
-        public uint ExposureTime
+        public int ExposureBox
         {
             get
             {
                 if (cam != null)
-                    return (uint)cam.ExposureTime.Value;
+                    return (int)cam.ExposureTime.Value;
                 return 0;
             }
             set
             {
                 SetExposure(value); // when loses focus, sets camera to what user inputed
-                NotifyPropertyChanged("ExposureTime"); // update UI box (calls get)
+                NotifyPropertyChanged("ExposureBox"); // update UI box (calls get)
             }
         }
-        public void SetExposure(uint micros)
+        public void SetExposure(int micros)
         {
             try
             {
@@ -416,7 +531,11 @@ namespace CameraController
             return true;
         }
 
-
+        public void Dispose()
+        {
+            liveMode = false;
+            cam.DeInit();
+        }
 
         #region PropertyChanged stuff
         // call this method invokes event to update UI elements which use Binding
@@ -425,6 +544,8 @@ namespace CameraController
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
+
         #endregion
 
     }

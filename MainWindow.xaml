@@ -63,10 +63,13 @@
             </StackPanel>
 
             <Button Content="Capture" Width="100" Height="50" Margin="0,20,0,20" Click="Capture_Click"/>
+            <Button Content="Record" Width="100" Height="50" Margin="0,20,0,20" Click="Record_Click"/>
             <Button Content="Stop" Width="100" Height="50" Margin="0,20,0,20" Click="Stop_Click"/>
+            <TextBlock Text="AVI Frame Rate:" HorizontalAlignment="Center"/>
+            <TextBox Text="{Binding AviFrameRate}" Width="40pt"/>
             <Button Content="Browse" Width="100" Height="25" Margin="0,20,0,20" Click="Browse_Click"/>
 
-            <Button Content="Start Cam" Width="100" Height="25" HorizontalAlignment="Center" Click="StartCam_Click"/>
+            <Button Name="StartStopButton" Content="Start Cam" Width="100" Height="25" HorizontalAlignment="Center" Click="StartCam_Click"/>
         </StackPanel>
 
         <StackPanel Name="ImageStackPanel" Grid.Column="1" Orientation="Vertical">
