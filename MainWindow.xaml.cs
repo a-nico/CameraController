@@ -45,7 +45,7 @@ namespace CameraController
                 NotifyPropertyChanged("AviRateBox");
             }
         }
-
+        CameraControl.AviType aviFormat;
         public MainWindow()
         {
             InitializeComponent();
@@ -53,13 +53,15 @@ namespace CameraController
             AviPath = "C:\\Captures"; // default path
             AviRateBoxView.DataContext = this;
             AviRateBox = 30; // default fps
+            aviFormat = CameraControl.AviType.H264; // default format
+            
         }
 
-        #region Button Even Handlers
+        
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            camControl?.StartRecording(AviPath, AviRateBox);
+            camControl?.StartRecording(AviPath, AviRateBox, aviFormat);
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -109,6 +111,27 @@ namespace CameraController
             }
         }
 
+        
+        private void FormatChanged(object sender, RoutedEventArgs e)
+        { // radio button handler
+
+            System.Windows.Controls.RadioButton bt = sender as System.Windows.Controls.RadioButton;
+            switch (bt.Name)
+            {
+                case "Uncompressed":
+                    aviFormat = CameraControl.AviType.Uncompressed;
+                    break;
+                case "Mjpg":
+                    aviFormat = CameraControl.AviType.Mjpg;
+                    break;
+                case "H264":
+                    aviFormat = CameraControl.AviType.H264;
+                    break;
+            }
+
+        }
+
+        #region Other Button Even Handlers
         private void Stop_Click(object sender, RoutedEventArgs e)
         {
             camControl.isRecording = false;
@@ -281,6 +304,8 @@ namespace CameraController
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
         #endregion
+
+
     }
 
 
@@ -409,7 +434,6 @@ namespace CameraController
         public CameraControl(Dispatcher UIDispatcher)
         {
             this.UIDispatcher = UIDispatcher;
-
             imageQueue = new Queue<IManagedImage>();
 
             // create collecton on UI thread so I won't have any problems with scope BS
@@ -463,10 +487,10 @@ namespace CameraController
         }
 
         
-        public async void StartRecording(string aviFileDirectory, float frameRate, AviType fileType=AviType.H264)
+        public async void StartRecording(string aviFileDirectory, float frameRate, AviType fileType)
         {
             isAviDone = false;
-            string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
+            string name = DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt");
             //string name = "test";
             string aviFilename = aviFileDirectory + "\\" + name;
             //string aviFilename = "C:\\Captures\\test";
