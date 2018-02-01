@@ -50,7 +50,7 @@ namespace CameraController
         {
             InitializeComponent();
             AviPathView.DataContext = this;
-            AviPath = "C:/Captures"; // default path
+            AviPath = "C:\\Captures"; // default path
             AviRateBoxView.DataContext = this;
             AviRateBox = 30; // default fps
         }
@@ -59,7 +59,7 @@ namespace CameraController
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            camControl.StartRecording(AviPath, AviRateBox);
+            camControl?.StartRecording(AviPath, AviRateBox);
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -466,10 +466,10 @@ namespace CameraController
         public async void StartRecording(string aviFileDirectory, float frameRate, AviType fileType=AviType.H264)
         {
             isAviDone = false;
-            string name = DateTime.Now.ToString("/MM-dd-yyyy h.mm.ss tt");
+            string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
             //string name = "test";
-            //string aviFilename = aviFileDirectory + name;
-            string aviFilename = "C:/Captures/test";
+            string aviFilename = aviFileDirectory + "\\" + name;
+            //string aviFilename = "C:\\Captures\\test";
 
             // start eating up the queue and appending to AVI
             await Task.Run(new Action(() =>
