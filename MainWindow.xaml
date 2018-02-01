@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CameraController"
         mc:Ignorable="d"
-        Title="Dr. Drei's Camera Controller" Height="800" Width="800">
+        Title="Dr. Drei's Camera Controller" Height="800" Width="800"
+        Closing="OnClose">
     <Grid Name="MainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/> 

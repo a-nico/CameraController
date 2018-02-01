@@ -42,7 +42,7 @@ namespace CameraController
         private void Record_Click(object sender, RoutedEventArgs e)
         {
             //C: \Users\Bubble\Videos\Captures
-            camControl.startRecording();
+            camControl.StartRecording();
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -240,7 +240,10 @@ namespace CameraController
         }
         #endregion
 
-
+        private void OnClose(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            camControl?.Dispose();
+        }
     }
 
 
@@ -433,17 +436,20 @@ namespace CameraController
             })); // end Task
         }
 
-        const string defaultPath = "C:\\Users\\Bubble\\Videos\\Captures\\";
-        public void startRecording(string aviFileDirectory=defaultPath, float frameRate=30, AviType fileType=AviType.H264)
+        const string defaultPath = "C:\\Captures\\";
+        public void StartRecording(string aviFileDirectory=defaultPath, float frameRate=30, AviType fileType=AviType.H264)
         {
             isRecording = true;
-            string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
+
+            //string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
+            string name = DateTime.Now.ToString("mm ss");
             string aviFilename = aviFileDirectory + name;
 
             // start eating up the queue and appending to AVI
             Task.Run(new Action(() =>
             {
-                using (IManagedAVIRecorder aviRecorder = new ManagedAVIRecorder())
+                IManagedAVIRecorder aviRecorder = new ManagedAVIRecorder();
+                try
                 {
                     switch (fileType)
                     {
@@ -463,7 +469,7 @@ namespace CameraController
                         case AviType.H264:
                             H264Option h264Option = new H264Option();
                             h264Option.frameRate = frameRate;
-                            h264Option.bitrate = 1000000;
+                            h264Option.bitrate = 10000000;
                             h264Option.height = frameHeight;
                             h264Option.width = frameWidth;
                             aviRecorder.AVIOpen(aviFilename, h264Option);
@@ -477,10 +483,17 @@ namespace CameraController
                             using (var rawImage = imageQueue.Dequeue())
                                 aviRecorder.AVIAppend(rawImage);
                         }
-
-                            
                     }
-                aviRecorder.AVIClose();
+                    aviRecorder.AVIClose();
+                    imageQueue.Clear();
+                }
+                catch (Exception e)
+                {
+                System.Windows.MessageBox.Show("AVI threw exception " + e.Message);
+                }
+                finally
+                {
+                    aviRecorder.Dispose();
                 }
 
             }));
@@ -635,9 +648,10 @@ namespace CameraController
                     return false;
                 }
                 else cam = camList[0]; // get the first one
+                camList.Clear();
             } // camlist is garbage collected
             cam.Init(); // don't know what this does
-
+            
             SetFramerate(DEFAULT_FRAME_RATE);
             NotifyPropertyChanged("ExposureBox");
             return true;
@@ -647,6 +661,11 @@ namespace CameraController
         {
             liveMode = false;
             cam.DeInit();
+            spinnakerSystem.Dispose();
+            while (imageQueue.Count > 0)
+            {
+                System.Threading.Thread.Sleep(100);
+            }
         }
 
         #region PropertyChanged stuff
