@@ -17,32 +17,49 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using SpinnakerNET;
 using SpinnakerNET.GenApi;
+using System.Windows.Forms;
 
 namespace CameraController
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
 
         CameraControl camControl;
         bool camStarted;
         float bigModifier = 1.6f;
         float smallModifier = 1.2f;
-        //string aviPath = 
+        public string AviPath { get; set; }
+        private int _AviRateBox = 30;
+        public int AviRateBox
+        {
+            get
+            {
+                return _AviRateBox;
+            }
+            set
+            {
+                _AviRateBox = value;
+                NotifyPropertyChanged("AviRateBox");
+            }
+        }
 
         public MainWindow()
         {
             InitializeComponent();
- 
+            AviPathView.DataContext = this;
+            AviPath = "C:/Captures"; // default path
+            AviRateBoxView.DataContext = this;
+            AviRateBox = 30; // default fps
         }
 
         #region Button Even Handlers
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            camControl.StartRecording(frameRate:camControl.AviRateBox);
+            camControl.StartRecording(AviPath, AviRateBox);
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -83,7 +100,13 @@ namespace CameraController
 
         private void Browse_Click(object sender, RoutedEventArgs e)
         {
-
+            FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+            var result = folderDialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                AviPath = folderDialog.SelectedPath;
+                NotifyPropertyChanged("AviPath");
+            }
         }
 
         private void Stop_Click(object sender, RoutedEventArgs e)
@@ -249,6 +272,15 @@ namespace CameraController
         {
             camControl?.Dispose();
         }
+
+        #region PropertyChanged stuff
+        // call this method invokes event to update UI elements which use Binding
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void NotifyPropertyChanged(string name)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+        #endregion
     }
 
 
@@ -272,8 +304,7 @@ namespace CameraController
         int frameWidth;
         int frameHeight;
         const int DEFAULT_FRAME_RATE = 30;
-        Task[] taskArray; // holds live and recording tasks
-
+        public bool isAviDone;
         #endregion
 
 
@@ -370,19 +401,7 @@ namespace CameraController
             }
         }
 
-        private int _AviRateBox = 30;
-        public int AviRateBox
-        {
-            get
-            {
-                return _AviRateBox;
-            }
-            set
-            {
-                _AviRateBox = value;
-                NotifyPropertyChanged("AviRateBox");
-            }
-        }
+
 
         #endregion
 
@@ -392,7 +411,7 @@ namespace CameraController
             this.UIDispatcher = UIDispatcher;
 
             imageQueue = new Queue<IManagedImage>();
-            taskArray = new Task[2];
+
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
@@ -405,7 +424,7 @@ namespace CameraController
         {
             isLive = true;
 
-            taskArray[0] = Task.Run(new Action(() =>
+            Task.Run(new Action(() =>
             {
                 SetAcqusitionMode(AcquisitionMode.Continuous);
                 cam.BeginAcquisition();
@@ -443,15 +462,17 @@ namespace CameraController
             })); // end Task
         }
 
-        const string defaultPath = "C:\\Captures\\";
-        public void StartRecording(string aviFileDirectory=defaultPath, float frameRate=30, AviType fileType=AviType.H264)
+        
+        public async void StartRecording(string aviFileDirectory, float frameRate, AviType fileType=AviType.H264)
         {
-            //string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
-            string name = DateTime.Now.ToString("mm ss");
-            string aviFilename = aviFileDirectory + name;
+            isAviDone = false;
+            string name = DateTime.Now.ToString("/MM-dd-yyyy h.mm.ss tt");
+            //string name = "test";
+            //string aviFilename = aviFileDirectory + name;
+            string aviFilename = "C:/Captures/test";
 
             // start eating up the queue and appending to AVI
-            taskArray[1] = Task.Run(new Action(() =>
+            await Task.Run(new Action(() =>
             {
                 System.Threading.Thread.Sleep(1000 * TimerBox);
                 isRecording = true;
@@ -504,6 +525,7 @@ namespace CameraController
                 }
 
             }));
+            isAviDone = true;
         }
 
 
@@ -664,18 +686,21 @@ namespace CameraController
             return true;
         }
 
-        public void Dispose()
+        public async void Dispose()
         {
             isLive = false;
-            //System.Threading.Thread.Sleep(500);
-
-
-            foreach (var task in taskArray)
+            if (cam != null && cam.IsInitialized())
             {
-                task?.Wait(); // wait for threads to finish
+                await Task.Run(() =>
+                {
+                    while (cam.IsStreaming() || !isAviDone)
+                    {
+                        // hold on till cam stops
+                    }
+                });
+
+                cam?.DeInit();
             }
-            cam.EndAcquisition();
-            cam?.DeInit();
             spinnakerSystem?.Dispose();
         }
 
