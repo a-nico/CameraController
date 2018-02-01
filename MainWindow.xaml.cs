@@ -30,6 +30,7 @@ namespace CameraController
         bool camStarted;
         float bigModifier = 1.6f;
         float smallModifier = 1.2f;
+        //string aviPath = 
 
         public MainWindow()
         {
@@ -41,8 +42,7 @@ namespace CameraController
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            //C: \Users\Bubble\Videos\Captures
-            camControl.StartRecording();
+            camControl.StartRecording(frameRate:camControl.AviRateBox);
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -65,9 +65,9 @@ namespace CameraController
             } 
             else
             {
-                if (camControl.liveMode)
+                if (camControl.isLive)
                 {
-                    camControl.liveMode = false;
+                    camControl.isLive = false;
                     StartStopButton.Content = "Go Live";
                 }
                 else
@@ -260,7 +260,7 @@ namespace CameraController
         Dispatcher UIDispatcher;
         private ManagedSystem spinnakerSystem; // spinnaker class
         private IManagedCamera cam; // the blackfly
-        public bool liveMode; // live mode or frame capture on UI
+        public bool isLive; // live mode or frame capture on UI
         public bool isRecording; // if direct to AVI is running
         private Queue<IManagedImage> imageQueue; // waiting to get appended to AVI
         public enum AviType
@@ -356,7 +356,7 @@ namespace CameraController
             }
         }
 
-        private int _TimerBox;
+        private int _TimerBox = 0;
         public int TimerBox
         {
             get
@@ -370,7 +370,7 @@ namespace CameraController
             }
         }
 
-        private int _AviRateBox;
+        private int _AviRateBox = 30;
         public int AviRateBox
         {
             get
@@ -403,7 +403,7 @@ namespace CameraController
 
         public void GoLive()
         {
-            liveMode = true;
+            isLive = true;
 
             taskArray[0] = Task.Run(new Action(() =>
             {
@@ -411,7 +411,7 @@ namespace CameraController
                 cam.BeginAcquisition();
                 
 
-                while (liveMode)
+                while (isLive)
                 {
                     using (IManagedImage rawImage = cam.GetNextImage())
                     {
@@ -421,6 +421,8 @@ namespace CameraController
                             frameHeight = (int)rawImage.Height;
                             frameWidth = (int)rawImage.Width;
                         }
+
+                        
 
                         // flash it on screen
                         // updating UI image has to be done on UI thread. Use Dispatcher
@@ -444,8 +446,6 @@ namespace CameraController
         const string defaultPath = "C:\\Captures\\";
         public void StartRecording(string aviFileDirectory=defaultPath, float frameRate=30, AviType fileType=AviType.H264)
         {
-            isRecording = true;
-
             //string name = DateTime.Now.ToString("MM-dd-yyyy h.mm.ss tt");
             string name = DateTime.Now.ToString("mm ss");
             string aviFilename = aviFileDirectory + name;
@@ -453,6 +453,8 @@ namespace CameraController
             // start eating up the queue and appending to AVI
             taskArray[1] = Task.Run(new Action(() =>
             {
+                System.Threading.Thread.Sleep(1000 * TimerBox);
+                isRecording = true;
                 IManagedAVIRecorder aviRecorder = new ManagedAVIRecorder();
                 try
                 {
@@ -664,8 +666,15 @@ namespace CameraController
 
         public void Dispose()
         {
-            liveMode = false;
-            Task.WaitAll(taskArray);
+            isLive = false;
+            //System.Threading.Thread.Sleep(500);
+
+
+            foreach (var task in taskArray)
+            {
+                task?.Wait(); // wait for threads to finish
+            }
+            cam.EndAcquisition();
             cam?.DeInit();
             spinnakerSystem?.Dispose();
         }
