@@ -57,6 +57,11 @@ namespace CameraController
                     StartCam_Click(sender, e);
                     camStarted = true;
                 }
+                else
+                {
+                    camControl.Dispose();
+                    camControl = null;
+                }
             } 
             else
             {
@@ -267,6 +272,7 @@ namespace CameraController
         int frameWidth;
         int frameHeight;
         const int DEFAULT_FRAME_RATE = 30;
+        Task[] taskArray; // holds live and recording tasks
 
         #endregion
 
@@ -386,6 +392,7 @@ namespace CameraController
             this.UIDispatcher = UIDispatcher;
 
             imageQueue = new Queue<IManagedImage>();
+            taskArray = new Task[2];
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
@@ -394,13 +401,11 @@ namespace CameraController
 
         }
 
-
-
         public void GoLive()
         {
             liveMode = true;
 
-            Task.Run(new Action(() =>
+            taskArray[0] = Task.Run(new Action(() =>
             {
                 SetAcqusitionMode(AcquisitionMode.Continuous);
                 cam.BeginAcquisition();
@@ -446,7 +451,7 @@ namespace CameraController
             string aviFilename = aviFileDirectory + name;
 
             // start eating up the queue and appending to AVI
-            Task.Run(new Action(() =>
+            taskArray[1] = Task.Run(new Action(() =>
             {
                 IManagedAVIRecorder aviRecorder = new ManagedAVIRecorder();
                 try
@@ -660,12 +665,9 @@ namespace CameraController
         public void Dispose()
         {
             liveMode = false;
-            cam.DeInit();
-            spinnakerSystem.Dispose();
-            while (imageQueue.Count > 0)
-            {
-                System.Threading.Thread.Sleep(100);
-            }
+            Task.WaitAll(taskArray);
+            cam?.DeInit();
+            spinnakerSystem?.Dispose();
         }
 
         #region PropertyChanged stuff
