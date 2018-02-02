@@ -92,8 +92,7 @@ namespace CameraController
                 NotifyPropertyChanged("AviPath");
             }
         }
-
-        
+                
         private void FormatChanged(object sender, RoutedEventArgs e)
         { // radio button handler
 
@@ -113,8 +112,6 @@ namespace CameraController
 
         }
 
-
-
         private void Capture_Click(object sender, RoutedEventArgs e)
         {
             camControl?.Capture();
@@ -124,19 +121,27 @@ namespace CameraController
         {
             if (camControl != null && !camControl.IsAviWriting)
             {
+                //Dispatcher.BeginInvoke(new Action( () =>
+                //{
+                    string baseFolder = AviPath + "\\Images\\";
+                    string basePath = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
+                    System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
+                    int k = 1;
+                    foreach (var img in camControl.ImageSourceThumbnails)
+                    {
+                        BitmapFrame bmp = BitmapFrame.Create(img);
+                        string path = basePath + k++ + ".jpg";
+                        JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+                        encoder.Frames.Add(bmp);
+                        encoder.QualityLevel = camControl.QualityBox;  // in percent I think (so 0 - 100)
 
-                string baseFolder = AviPath + "\\Images\\";
-                string basePath = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
-                System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
-                int k = 1;
-                foreach (var img in camControl.ImageSourceThumbnails)
-                {                       
-                    string path = basePath + k++ + ".jpg";
-                    BitmapFrame bmp = BitmapFrame.Create(img);
-                    SaveJPEG(path, camControl.QualityBox, bmp);
-                        
-                }
+                        using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
+                        {
+                            encoder.Save(file);
+                        }
 
+                    }
+                //}));
             }
         }
 
@@ -488,8 +493,6 @@ namespace CameraController
             this.UIDispatcher = UIDispatcher;
             imageQueue = new Queue<IManagedImage>();
                    
-
-
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
