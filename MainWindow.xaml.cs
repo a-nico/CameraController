@@ -32,27 +32,13 @@ namespace CameraController
         float bigModifier = 1.6f;
         float smallModifier = 1.2f;
         public string AviPath { get; set; }
-        private int _AviRateBox = 30;
-        public int AviRateBox
-        {
-            get
-            {
-                return _AviRateBox;
-            }
-            set
-            {
-                _AviRateBox = value;
-                NotifyPropertyChanged("AviRateBox");
-            }
-        }
+
         CameraControl.AviType aviFormat;
         public MainWindow()
         {
             InitializeComponent();
             AviPathView.DataContext = this;
             AviPath = "C:\\Captures"; // default path
-            AviRateBoxView.DataContext = this;
-            AviRateBox = 30; // default fps
             aviFormat = CameraControl.AviType.H264; // default format
             
         }
@@ -61,7 +47,7 @@ namespace CameraController
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            camControl?.StartRecording(AviPath, AviRateBox, aviFormat);
+            camControl?.StartRecording(AviPath, aviFormat);
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -328,7 +314,6 @@ namespace CameraController
         }
         int frameWidth;
         int frameHeight;
-        const int DEFAULT_FRAME_RATE = 30;
         public bool isAviDone;
         #endregion
 
@@ -353,6 +338,35 @@ namespace CameraController
             }
         }
 
+        private float _AviRateBox;
+        public float AviRateBox
+        {
+            get
+            {
+                return _AviRateBox;
+            }
+            set
+            {
+                _AviRateBox = value;
+                NotifyPropertyChanged("AviRateBox");
+            }
+        }
+
+        private int _QualityBox;
+        public int QualityBox
+        {
+            get
+            {
+                return _QualityBox < 1 ? 1 : _QualityBox;
+            }
+            set
+            {
+                _QualityBox = value;
+                NotifyPropertyChanged("QualityBox");
+            }
+        }
+
+
         private ImageSource _MainImage;
         public ImageSource MainImage
         {
@@ -364,7 +378,7 @@ namespace CameraController
             }
         }
 
-        // gets called when "Capture" UI button is clicked
+        // gets filled when "Capture" UI button is clicked
         private ObservableCollection<ImageSource> _imageSourceThumbnails;
         public ObservableCollection<ImageSource> ImageSourceThumbnails
         {   //"observable collection" automatically notifies UI when changed
@@ -380,7 +394,7 @@ namespace CameraController
             }
         }
 
-        private int _FramesBox = 5;
+        private int _FramesBox;
         public int FramesBox
         {
             get
@@ -396,7 +410,7 @@ namespace CameraController
             }
         }
 
-        private float _DurationBox = 5;
+        private float _DurationBox;
         public float DurationBox
         {
             get
@@ -412,7 +426,7 @@ namespace CameraController
             }
         }
 
-        private int _TimerBox = 0;
+        private int _TimerBox;
         public int TimerBox
         {
             get
@@ -435,6 +449,8 @@ namespace CameraController
         {
             this.UIDispatcher = UIDispatcher;
             imageQueue = new Queue<IManagedImage>();
+                   
+
 
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
@@ -487,9 +503,10 @@ namespace CameraController
         }
 
         
-        public async void StartRecording(string aviFileDirectory, float frameRate, AviType fileType)
+        public async void StartRecording(string aviFileDirectory, AviType fileType)
         {
             isAviDone = false;
+            
             string name = DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt");
             //string name = "test";
             string aviFilename = aviFileDirectory + "\\" + name;
@@ -507,21 +524,21 @@ namespace CameraController
                     {
                         case AviType.Uncompressed:
                             AviOption uncompressedOption = new AviOption();
-                            uncompressedOption.frameRate = frameRate;
+                            uncompressedOption.frameRate = AviRateBox;
                             aviRecorder.AVIOpen(aviFilename, uncompressedOption);
                             break;
 
                         case AviType.Mjpg:
                             MJPGOption mjpgOption = new MJPGOption();
-                            mjpgOption.frameRate = frameRate;
-                            mjpgOption.quality = 75;
+                            mjpgOption.frameRate = AviRateBox;
+                            mjpgOption.quality = QualityBox;
                             aviRecorder.AVIOpen(aviFilename, mjpgOption);
                             break;
 
                         case AviType.H264:
                             H264Option h264Option = new H264Option();
-                            h264Option.frameRate = frameRate;
-                            h264Option.bitrate = 10000000;
+                            h264Option.frameRate = AviRateBox;
+                            h264Option.bitrate = 100000 * QualityBox;
                             h264Option.height = frameHeight;
                             h264Option.width = frameWidth;
                             aviRecorder.AVIOpen(aviFilename, h264Option);
@@ -704,9 +721,16 @@ namespace CameraController
                 camList.Clear();
             } // camlist is garbage collected
             cam.Init(); // don't know what this does
-            
-            SetFramerate(DEFAULT_FRAME_RATE);
-            NotifyPropertyChanged("ExposureBox");
+
+            // defaults:
+            SetFramerate(30);
+            QualityBox = 75; // default quality
+            FramesBox = 5;
+            TimerBox = 0;
+            DurationBox = 5;
+            AviRateBox = 30;
+
+            NotifyPropertyChanged("ExposureBox"); // refresh it w/ cam data
             return true;
         }
 
