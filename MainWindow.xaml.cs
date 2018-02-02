@@ -2,22 +2,15 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using SpinnakerNET;
 using SpinnakerNET.GenApi;
 using System.Windows.Forms;
+using System.IO;
 
 namespace CameraController
 {
@@ -43,11 +36,15 @@ namespace CameraController
             
         }
 
-        
+
+
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
-            camControl?.StartRecording(AviPath, aviFormat);
+            if (camControl != null && !camControl.IsAviWriting)
+            {
+                camControl.StartRecording(AviPath, aviFormat);
+            }
         }
 
         private void StartCam_Click(object sender, RoutedEventArgs e)
@@ -117,17 +114,56 @@ namespace CameraController
 
         }
 
-        #region Other Button Even Handlers
-        private void Stop_Click(object sender, RoutedEventArgs e)
-        {
-            camControl.isRecording = false;
-        }
+
 
         private void Capture_Click(object sender, RoutedEventArgs e)
         {
-
+            camControl?.Capture();
         }
 
+        private void SaveCaptures_Click(object sender, RoutedEventArgs e)
+        {
+            if (camControl != null && !camControl.IsAviWriting)
+            {
+                Task.Run(new Action(() =>
+                {
+
+                    string basePath = AviPath + "\\Images\\" + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
+                    int k = 1;
+                    foreach (BitmapSource img in camControl.ImageSourceThumbnails)
+                    {
+                        var bmp = BitmapFrame.Create(img);
+                        string path = basePath + k++;
+                        SaveJPEG(path, camControl.QualityBox, bmp);
+                        
+                    }
+                }));
+            }
+        }
+
+        private void SaveJPEG(string path, int quality, BitmapSource bmp)
+        {
+            JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+            BitmapFrame outputFrame = BitmapFrame.Create(bmp);
+            encoder.Frames.Add(outputFrame);
+            encoder.QualityLevel = quality;  // in percent I think (so 0 - 100)
+
+            using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
+            {
+                encoder.Save(file);
+            }
+        }
+
+        #region Other Button Even Handlers
+        private void Stop_Click(object sender, RoutedEventArgs e)
+        {
+            if (camControl != null)
+            {
+                camControl.isRecording = false;
+                camControl.isCapturing = false;
+
+            }
+        }
         private void ExposureMinus2_Click(object sender, RoutedEventArgs e)
         {
             if (camStarted)
@@ -289,6 +325,7 @@ namespace CameraController
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
         #endregion
 
 
@@ -314,7 +351,8 @@ namespace CameraController
         }
         int frameWidth;
         int frameHeight;
-        public bool isAviDone;
+        public bool IsAviWriting { get; private set; }
+        public bool isCapturing;
         #endregion
 
 
@@ -390,7 +428,7 @@ namespace CameraController
             set
             {
                 _imageSourceThumbnails = value;
-                NotifyPropertyChanged("ImageSourceFrames");
+                NotifyPropertyChanged("ImageSourceThumbnails");
             }
         }
 
@@ -399,7 +437,7 @@ namespace CameraController
         {
             get
             {
-                return _FramesBox < 2 ? 2 : _FramesBox; // can't be <2 for MultiFrame mode
+                return _FramesBox < 5 ? 5 : _FramesBox; // can't be <2 for MultiFrame mode
             }
             set
             {
@@ -427,6 +465,8 @@ namespace CameraController
         }
 
         private int _TimerBox;
+        
+
         public int TimerBox
         {
             get
@@ -481,8 +521,6 @@ namespace CameraController
                             frameWidth = (int)rawImage.Width;
                         }
 
-                        
-
                         // flash it on screen
                         // updating UI image has to be done on UI thread. Use Dispatcher
                         UIDispatcher.Invoke(new Action(() =>
@@ -505,7 +543,7 @@ namespace CameraController
         
         public async void StartRecording(string aviFileDirectory, AviType fileType)
         {
-            isAviDone = false;
+            IsAviWriting = true;
             
             string name = DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt");
             //string name = "test";
@@ -566,9 +604,56 @@ namespace CameraController
                 }
 
             }));
-            isAviDone = true;
+            IsAviWriting = false;
         }
 
+        public async void Capture()
+        {
+            bool wasLive = isLive;
+            isLive = false;
+            isRecording = false;
+            
+            await Task.Run(() =>
+            {
+                System.Threading.Thread.Sleep(TimerBox);
+                while (IsAviWriting || cam.IsStreaming())
+                {
+                    // wait for cam to stop live
+                    // wait for AVI to finish so it won't overload the CPU
+                }
+            });
+
+            isCapturing = true;
+            SetAcqusitionMode(AcquisitionMode.Multi, FramesBox);
+            cam.BeginAcquisition();
+            ImageSourceThumbnails.Clear();
+
+            await Task.Run(new Action( () =>
+            {
+                for (int i = 0; i < FramesBox && isCapturing; i++)
+                {
+                    using (var rawImage = cam.GetNextImage())
+                    {
+                        UIDispatcher.Invoke(new Action(() =>
+                        {
+                            var bitmapImage = ConvertRawToBitmapSource(rawImage);
+                            ImageSourceThumbnails.Add(bitmapImage);
+                            MainImage = bitmapImage;
+                        }));
+
+                    } 
+                }
+
+            }));
+
+            isCapturing = false;
+            cam.EndAcquisition();
+
+            if (wasLive)
+            {
+                GoLive();
+            }            
+        }
 
         #region Acquisition Mode
         public enum AcquisitionMode { Single, Multi, Continuous }; // made this for kicks
@@ -725,9 +810,9 @@ namespace CameraController
             // defaults:
             SetFramerate(30);
             QualityBox = 75; // default quality
-            FramesBox = 5;
             TimerBox = 0;
-            DurationBox = 5;
+            //DurationBox = 1;
+            FramesBox = 10;
             AviRateBox = 30;
 
             NotifyPropertyChanged("ExposureBox"); // refresh it w/ cam data
@@ -741,7 +826,7 @@ namespace CameraController
             {
                 await Task.Run(() =>
                 {
-                    while (cam.IsStreaming() || !isAviDone)
+                    while (cam.IsStreaming() || IsAviWriting)
                     {
                         // hold on till cam stops
                     }
