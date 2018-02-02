@@ -26,6 +26,7 @@ namespace CameraController
         float smallModifier = 1.2f;
         public string AviPath { get; set; }
         CameraControl.AviType aviFormat;
+        bool isSaving;
 
         public MainWindow()
         {
@@ -121,39 +122,22 @@ namespace CameraController
         {
             if (camControl != null && !camControl.IsAviWriting)
             {
-                //Dispatcher.BeginInvoke(new Action( () =>
-                //{
+                Task.Run( () => 
+                {
+                    isSaving = true;
                     string baseFolder = AviPath + "\\Images\\";
                     string basePath = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
                     System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
                     int k = 1;
-                    foreach (var img in camControl.ImageSourceThumbnails)
+                    while (camControl.queueForJPGs.Count > 0)
                     {
-                        BitmapFrame bmp = BitmapFrame.Create(img);
-                        string path = basePath + k++ + ".jpg";
-                        JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-                        encoder.Frames.Add(bmp);
-                        encoder.QualityLevel = camControl.QualityBox;  // in percent I think (so 0 - 100)
-
-                        using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
+                        using (IManagedImage rawImage = camControl.queueForJPGs.Dequeue())
                         {
-                            encoder.Save(file);
+                            rawImage.Save(basePath + k++ + ".jpg");
                         }
-
                     }
-                //}));
-            }
-        }
-
-        private void SaveJPEG(string path, int quality, BitmapFrame bmp)
-        {
-            JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-            encoder.Frames.Add(bmp);
-            encoder.QualityLevel = quality;  // in percent I think (so 0 - 100)
-
-            using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
-            {
-                encoder.Save(file);
+                    isSaving = false;
+                });
             }
         }
 
@@ -316,8 +300,9 @@ namespace CameraController
         }
         #endregion
 
-        private void OnClose(object sender, System.ComponentModel.CancelEventArgs e)
+        private async void OnClose(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            await Task.Run(() => { while (isSaving) { } }); // wait for saving to finish
             camControl?.Dispose();
         }
 
@@ -345,7 +330,8 @@ namespace CameraController
         private IManagedCamera cam; // the blackfly
         public bool isLive; // live mode or frame capture on UI
         public bool isRecording; // if direct to AVI is running
-        private Queue<IManagedImage> imageQueue; // waiting to get appended to AVI
+        private Queue<IManagedImage> queueForAvi; // waiting to get appended to AVI
+        public Queue<IManagedImage> queueForJPGs; // waiting to get saved as JPGs
         public enum AviType
         {
             Uncompressed,
@@ -491,8 +477,9 @@ namespace CameraController
         public CameraControl(Dispatcher UIDispatcher)
         {
             this.UIDispatcher = UIDispatcher;
-            imageQueue = new Queue<IManagedImage>();
-                   
+            queueForAvi = new Queue<IManagedImage>();
+            queueForJPGs = new Queue<IManagedImage>();
+
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
@@ -532,7 +519,7 @@ namespace CameraController
                         if (isRecording)
                         {
                             // Deep copy image into queue for making AVI
-                            imageQueue.Enqueue(rawImage.Convert(PixelFormatEnums.Mono8));
+                            queueForAvi.Enqueue(rawImage.Convert(PixelFormatEnums.Mono8));
                         }
 
                     }
@@ -585,16 +572,16 @@ namespace CameraController
                             break;
                     }
 
-                    while (isRecording || imageQueue.Count > 0)
+                    while (isRecording || queueForAvi.Count > 0)
                     {
-                        if (imageQueue.Count > 0)
+                        if (queueForAvi.Count > 0)
                         {
-                            using (var rawImage = imageQueue.Dequeue())
+                            using (var rawImage = queueForAvi.Dequeue())
                                 aviRecorder.AVIAppend(rawImage);
                         }
                     }
                     aviRecorder.AVIClose();
-                    imageQueue.Clear();
+                    queueForAvi.Clear();
                 }
                 catch (Exception e)
                 {
@@ -636,6 +623,10 @@ namespace CameraController
                 {
                     using (var rawImage = cam.GetNextImage())
                     {
+                        // deep copy image so it'll get processed and saved later
+                        queueForJPGs.Enqueue(rawImage.Convert(PixelFormatEnums.Mono8));
+                        
+                        // now put on UI
                         UIDispatcher.Invoke(new Action(() =>
                         {
                             var bitmapImage = ConvertRawToBitmapSource(rawImage);
