@@ -25,17 +25,16 @@ namespace CameraController
         float bigModifier = 1.6f;
         float smallModifier = 1.2f;
         public string AviPath { get; set; }
-
         CameraControl.AviType aviFormat;
+
         public MainWindow()
         {
             InitializeComponent();
             AviPathView.DataContext = this;
             AviPath = "C:\\Captures"; // default path
             aviFormat = CameraControl.AviType.H264; // default format
-            
-        }
 
+        }
 
 
 
@@ -125,27 +124,26 @@ namespace CameraController
         {
             if (camControl != null && !camControl.IsAviWriting)
             {
-                Task.Run(new Action(() =>
-                {
 
-                    string basePath = AviPath + "\\Images\\" + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
-                    int k = 1;
-                    foreach (BitmapSource img in camControl.ImageSourceThumbnails)
-                    {
-                        var bmp = BitmapFrame.Create(img);
-                        string path = basePath + k++;
-                        SaveJPEG(path, camControl.QualityBox, bmp);
+                string baseFolder = AviPath + "\\Images\\";
+                string basePath = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
+                System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
+                int k = 1;
+                foreach (var img in camControl.ImageSourceThumbnails)
+                {                       
+                    string path = basePath + k++ + ".jpg";
+                    BitmapFrame bmp = BitmapFrame.Create(img);
+                    SaveJPEG(path, camControl.QualityBox, bmp);
                         
-                    }
-                }));
+                }
+
             }
         }
 
-        private void SaveJPEG(string path, int quality, BitmapSource bmp)
+        private void SaveJPEG(string path, int quality, BitmapFrame bmp)
         {
             JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-            BitmapFrame outputFrame = BitmapFrame.Create(bmp);
-            encoder.Frames.Add(outputFrame);
+            encoder.Frames.Add(bmp);
             encoder.QualityLevel = quality;  // in percent I think (so 0 - 100)
 
             using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
@@ -417,8 +415,8 @@ namespace CameraController
         }
 
         // gets filled when "Capture" UI button is clicked
-        private ObservableCollection<ImageSource> _imageSourceThumbnails;
-        public ObservableCollection<ImageSource> ImageSourceThumbnails
+        private ObservableCollection<BitmapSource> _imageSourceThumbnails;
+        public ObservableCollection<BitmapSource> ImageSourceThumbnails
         {   //"observable collection" automatically notifies UI when changed
             get
             {
@@ -495,7 +493,7 @@ namespace CameraController
             // create collecton on UI thread so I won't have any problems with scope BS
             UIDispatcher?.BeginInvoke(new Action(() =>
             {
-                ImageSourceThumbnails = new ObservableCollection<ImageSource>();
+                ImageSourceThumbnails = new ObservableCollection<BitmapSource>();
             }));
 
         }
@@ -544,6 +542,7 @@ namespace CameraController
         public async void StartRecording(string aviFileDirectory, AviType fileType)
         {
             IsAviWriting = true;
+            System.IO.Directory.CreateDirectory(aviFileDirectory); // creates new folder if it doesn't exist
             
             string name = DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt");
             //string name = "test";
@@ -769,25 +768,22 @@ namespace CameraController
 
         // convert raw image (IManagedImage) to BitmapSource
         private BitmapSource ConvertRawToBitmapSource(IManagedImage rawImage)
-        {
-            // convert and copy raw bytes into compatible image type
-            using (IManagedImage convertedImage = rawImage.Convert(PixelFormatEnums.Mono8))
-            {
-                byte[] bytes = convertedImage.ManagedData;
+        { // convert and copy raw bytes into compatible image type
+            
+            byte[] bytes = rawImage.ManagedData;// convertedImage.ManagedData;
+            System.Windows.Media.PixelFormat format = System.Windows.Media.PixelFormats.Gray8;
 
-                System.Windows.Media.PixelFormat format = System.Windows.Media.PixelFormats.Gray8;
+            return BitmapSource.Create(
+                    (int)rawImage.Width,
+                    (int)rawImage.Height,
+                    96d,
+                    96d,
+                    format,
+                    null,
+                    bytes,
+                    ((int)rawImage.Width * format.BitsPerPixel + 7) / 8
+                    );
 
-                return BitmapSource.Create(
-                        (int)rawImage.Width,
-                        (int)rawImage.Height,
-                        96d,
-                        96d,
-                        format,
-                        null,
-                        bytes,
-                        ((int)rawImage.Width * format.BitsPerPixel + 7) / 8
-                        );
-            }
         }
 
 
