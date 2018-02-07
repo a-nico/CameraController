@@ -6,7 +6,8 @@
         xmlns:local="clr-namespace:CameraController"
         mc:Ignorable="d"
         Title="Dr. Drei's Camera Controller" Height="800" Width="800"
-        Closing="OnClose">
+        Closing="OnClose"
+        KeyDown="Window_KeyDown">
     <Grid Name="MainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/> 
@@ -92,7 +93,7 @@
             <Image Name ="imageBox" Source="{Binding MainImage}" Margin="5"/>
 
             <!--sam: the "selected item" binds the object selected (calls "set") to a property in the context inherited by ListBox-->
-            <ListBox ItemsSource="{Binding ImageSourceThumbnails}" SelectedItem="{Binding MainImage}"  Height="110">
+            <ListBox Name="ThumbnailBox" ItemsSource="{Binding ImageSourceThumbnails}" SelectedItem="{Binding MainImage}"  Height="110">
                 <!--sam: once inside here, the context gets updated to the objects inside the listbox. If you want to bind to the object itself use
             the {Binding .}, else use the property name straight up. E.g. if listbox has inside a object containing "string txt" you can do
             {Binding txt} and it will show the text-->

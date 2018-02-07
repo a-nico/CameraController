@@ -34,10 +34,8 @@ namespace CameraController
             AviPathView.DataContext = this;
             AviPath = "C:\\Captures"; // default path
             aviFormat = CameraControl.AviType.H264; // default format
-
+            //var selectedImg = ThumbnailBox.SelectedItem;
         }
-
-
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
@@ -125,9 +123,8 @@ namespace CameraController
                 Task.Run( () => 
                 {
                     isSaving = true;
-                    string baseFolder = AviPath + "\\Images\\";
+                    var baseFolder = MakeImageFolder(AviPath);
                     string basePath = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + " ";
-                    System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
                     int k = 1;
                     while (camControl.queueForJPGs.Count > 0)
                     {
@@ -138,6 +135,39 @@ namespace CameraController
                     }
                     isSaving = false;
                 });
+            }
+        }
+
+        // makes a folder inside "basePath" called "Images" and returns the path to it
+        string MakeImageFolder(string basePath)
+        {
+            string baseFolder = basePath + "\\Images\\";
+            System.IO.Directory.CreateDirectory(baseFolder); // creates new folder if it doesn't exist
+            return baseFolder;
+        }
+
+        // Main window key down handler
+        private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            // if 's' key is hit, save current frame
+            if (e.Key == System.Windows.Input.Key.S)
+            {
+                if (ThumbnailBox.SelectedItem != null && camControl != null)
+                {
+                    var img = (BitmapSource)ThumbnailBox.SelectedItem;
+                    JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+                    BitmapFrame outputFrame = BitmapFrame.Create(img);
+                    encoder.Frames.Add(outputFrame);
+                    encoder.QualityLevel = camControl.QualityBox;  // in percent I think (so 0 - 100)
+
+                    var baseFolder = MakeImageFolder(AviPath);
+                    string path = baseFolder + DateTime.Now.ToString("ddd, dd MMM yyyy hh-mm-ss tt") + ".jpg";
+                    using (FileStream file = new FileStream(path, FileMode.Create)) //FileMode.Create will overwrite
+                    {
+                        encoder.Save(file);
+                    }
+
+                }
             }
         }
 
@@ -313,6 +343,7 @@ namespace CameraController
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
 
         #endregion
 
@@ -531,6 +562,7 @@ namespace CameraController
         
         public async void StartRecording(string aviFileDirectory, AviType fileType)
         {
+            if (IsAviWriting) return; // don't start recording until it's done with previous
             IsAviWriting = true;
             System.IO.Directory.CreateDirectory(aviFileDirectory); // creates new folder if it doesn't exist
             
@@ -601,6 +633,7 @@ namespace CameraController
             bool wasLive = isLive;
             isLive = false;
             isRecording = false;
+            queueForJPGs.Clear(); // so it won't keep adding on
             
             await Task.Run(() =>
             {
