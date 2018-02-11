@@ -88,12 +88,17 @@
             <Button Name="StartStopButton" Content="Start Cam" Width="100" Height="50" HorizontalAlignment="Center" Click="StartCam_Click"/>
         </StackPanel>
 
-        <StackPanel Name="ImageStackPanel" Grid.Column="1" Orientation="Vertical">
+        <Grid Name="ImageGrid" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="110"/>
+            </Grid.RowDefinitions>
+
              <!--Big UI Image-->
-            <Image Name ="imageBox" Source="{Binding MainImage}" Margin="5"/>
+            <Image Name="imageBox" Source="{Binding MainImage}" Margin="5" Grid.Row="0"/>
 
             <!--sam: the "selected item" binds the object selected (calls "set") to a property in the context inherited by ListBox-->
-            <ListBox Name="ThumbnailBox" ItemsSource="{Binding ImageSourceThumbnails}" SelectedItem="{Binding MainImage}"  Height="110">
+            <ListBox Name="ThumbnailBox" ItemsSource="{Binding ImageSourceThumbnails}" SelectedItem="{Binding MainImage}" Grid.Row="1">
                 <!--sam: once inside here, the context gets updated to the objects inside the listbox. If you want to bind to the object itself use
             the {Binding .}, else use the property name straight up. E.g. if listbox has inside a object containing "string txt" you can do
             {Binding txt} and it will show the text-->
@@ -110,7 +115,7 @@
                 </ItemsControl.ItemsPanel>
 
             </ListBox>
-        </StackPanel>
+        </Grid>
 
     </Grid>
 </Window>
