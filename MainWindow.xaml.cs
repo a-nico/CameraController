@@ -24,15 +24,32 @@ namespace CameraController
         bool camStarted;
         float bigModifier = 1.6f;
         float smallModifier = 1.2f;
-        public string AviPath { get; set; }
+        public string AviPath
+        {
+            get
+            {
+                var saved = Properties.Settings.Default.savepath;
+                if (saved == null || saved == "")
+                {
+                    return "C:\\Captures";
+                }
+                return saved;
+            }
+            set
+            {
+                Properties.Settings.Default.savepath = value;
+                Properties.Settings.Default.Save();
+                NotifyPropertyChanged("AviPath");
+            }
+        }
         CameraControl.AviType aviFormat;
         bool isSaving;
 
         public MainWindow()
         {
+            
             InitializeComponent();
             AviPathView.DataContext = this;
-            AviPath = "C:\\Captures"; // default path
             aviFormat = CameraControl.AviType.H264; // default format
             //var selectedImg = ThumbnailBox.SelectedItem;
         }
@@ -88,7 +105,6 @@ namespace CameraController
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 AviPath = folderDialog.SelectedPath;
-                NotifyPropertyChanged("AviPath");
             }
         }
                 
@@ -334,6 +350,7 @@ namespace CameraController
         {
             await Task.Run(() => { while (isSaving) { } }); // wait for saving to finish
             camControl?.Dispose();
+
         }
 
         #region PropertyChanged stuff
