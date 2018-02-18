@@ -64,9 +64,9 @@
                 <Button Content="+" Width="30" Click="TimerPlus_Click"/>
             </StackPanel>
 
-            <Button Content="Capture" Width="100" Height="50" Margin="0,10,0,10" Click="Capture_Click"/>
-            <Button Content="Record" Width="100" Height="50" Margin="0,5,0,5" Click="Record_Click"/>
-            <Button Content="Stop" Width="100" Height="50" Margin="0,10,0,10" Click="Stop_Click"/>
+            <Button Name="CaptureButton"  Content="Capture" Width="100" Height="50" Margin="0,10,0,10" Click="Capture_Click"/>
+            <Button Name="RecordButton"  Content="Record" Width="100" Height="50" Margin="0,5,0,5" Click="Record_Click"/>
+            <!--<Button Content="Stop" Width="100" Height="50" Margin="0,10,0,10" Click="Stop_Click"/>-->
             
             <TextBlock Text="AVI Frame Rate (fps):" HorizontalAlignment="Center"/>
             <TextBox Name="AviRateBoxView" Text="{Binding AviRateBox}" Width="40pt" TextAlignment="Center" Margin="0,5,0, 10"/>

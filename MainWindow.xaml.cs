@@ -54,11 +54,34 @@ namespace CameraController
             //var selectedImg = ThumbnailBox.SelectedItem;
         }
 
-        private void Record_Click(object sender, RoutedEventArgs e)
+        private async void Record_Click(object sender, RoutedEventArgs e)
         {
-            if (camControl != null && !camControl.IsAviWriting)
+
+            if (camControl != null)
             {
-                camControl.StartRecording(AviPath, aviFormat);
+                var button = (System.Windows.Controls.Button)sender;
+                // if it's idle, start recording
+                if (!camControl.isCapturing && !camControl.isRecording && !camControl.IsAviWriting)
+                {
+                    camControl.StartRecording(AviPath, aviFormat);
+                    button.Foreground = Brushes.Red;
+                    button.Content = "** STOP **";
+                }
+                // if Recording or Capturing, Stop
+                else
+                {
+                    camControl.isRecording = false;
+                    camControl.isCapturing = false;
+                    button.IsEnabled = false;
+                    // wait for AVI to finish writing
+                    await Task.Run(() =>
+                    {
+                        while (camControl.IsAviWriting) ;
+                    });
+                    button.IsEnabled = true;
+                    button.Foreground = Brushes.Black;
+                    button.Content = "Record";
+                }
             }
         }
 
@@ -129,7 +152,26 @@ namespace CameraController
 
         private void Capture_Click(object sender, RoutedEventArgs e)
         {
-            camControl?.Capture();
+            if (camControl != null)
+            {
+                var button = (System.Windows.Controls.Button)sender;
+                // if it's idle, start recording
+                if (!camControl.isCapturing && !camControl.isRecording && !camControl.IsAviWriting)
+                {
+                    camControl.Capture();
+                    button.Foreground = Brushes.Red;
+                    button.Content = "** STOP **";
+                }
+                else
+                {
+                    camControl.isRecording = false;
+                    camControl.isCapturing = false;
+                    button.Foreground = Brushes.Black;
+                    button.Content = "Capture";
+                }
+
+            }
+
         }
 
         private void SaveCaptures_Click(object sender, RoutedEventArgs e)
@@ -188,15 +230,15 @@ namespace CameraController
         }
 
         #region Other Button Even Handlers
-        private void Stop_Click(object sender, RoutedEventArgs e)
-        {
-            if (camControl != null)
-            {
-                camControl.isRecording = false;
-                camControl.isCapturing = false;
+        //private void Stop_Click(object sender, RoutedEventArgs e)
+        //{
+        //    if (camControl != null)
+        //    {
+        //        camControl.isRecording = false;
+        //        camControl.isCapturing = false;
 
-            }
-        }
+        //    }
+        //}
         private void ExposureMinus2_Click(object sender, RoutedEventArgs e)
         {
             if (camStarted)
